@@ -10,14 +10,9 @@ namespace TinyBrowser
         static void Main(string[] args) {
             const string titleStartTag = "<title>";
             const string titleEndTag = "</title>";
-            const string hrefStartTag = "<a href=\""; // works?
-            const string hrefEndTag = "\"";
-            
             const string host = "acme.com";
             const string uri = "/";
             
-            //string eol = Environment.NewLine;
-            Console.WriteLine("Hello World!");
             var tcpClient = new TcpClient("acme.com", 80);
             var stream = tcpClient.GetStream();
             var streamWriter = new StreamWriter(stream, Encoding.ASCII);
@@ -34,23 +29,32 @@ namespace TinyBrowser
             Console.WriteLine( $"------------------Opened {uriBuilder}------------------");
             string title = FindTextBetweenTags(response, titleStartTag, titleEndTag);
             Console.WriteLine($"Title is: {title}");
-            Console.WriteLine($"---------Strings from all occurrences of '{hrefStartTag}' and '{hrefEndTag}'---------");
-            foreach (string s in GetAllBetweenTags(response, hrefStartTag, hrefEndTag)) {
-                Console.WriteLine(s);
-            }
+            // Console.WriteLine($"---------Strings from all occurrences of '{hrefStartTag}' and '{hrefEndTag}'---------");
+            // foreach (string s in GetAllBetweenTags(response, hrefStartTag, hrefEndTag)) {
+            //     Console.WriteLine(s);
+            // }
             Console.WriteLine("------------------Printing hrefs------------------");
             var hrefDict = GetHrefDict(response);
             foreach (var kvp in hrefDict) {
-                Console.WriteLine($"{kvp.Key} : {kvp.Value}");
+                Console.WriteLine($"{kvp.Key} -> {kvp.Value.Item1}, {kvp.Value.Item2}");
             }
+            Console.WriteLine($"select navigation target (number between {0} and {hrefDict.Count}). >");
+
+            int input = -1;
+            while (!(0 <= input && input <= hrefDict.Count)) {
+                input = Convert.ToInt32(Console.ReadLine());
+                if (!(0 <= input && input <= hrefDict.Count))
+                    Console.WriteLine($"invalid input, input (number between {0} and {hrefDict.Count}). >");
+            }
+            Console.WriteLine($"Interpreting {input}...");
         }
 
         public static string FindTextBetweenTags(string inputText, string startTag, string endTag, int startOffset = 0) {
             string result = string.Empty;
-            var startIndex = inputText.IndexOf(startTag, startOffset);
+            var startIndex = inputText.IndexOf(startTag, startOffset, StringComparison.OrdinalIgnoreCase);
             if (startIndex != -1) {
                 startIndex += startTag.Length;
-                var endIndex = inputText.IndexOf(endTag, startIndex); // find next occurence of endTag
+                var endIndex = inputText.IndexOf(endTag, startIndex, StringComparison.OrdinalIgnoreCase); // find next occurence of endTag
                 result = inputText[startIndex..endIndex]; //range lookup
             }
             return result;
@@ -72,12 +76,14 @@ namespace TinyBrowser
             }
         }
         
-        static Dictionary<string, string> GetHrefDict(string inputText) {
+        static Dictionary<int, (string, string)> GetHrefDict(string inputText) {
             const string hrefStartTag = "<a href=\""; 
             const string attributeDelim = "\"";
             const string hrefEndTag = "</a>";
+            
+            Dictionary<int, (string, string)> hrefDict = new Dictionary<int, (string, string)>();
 
-            Dictionary<string, string> hrefDict = new Dictionary<string, string>();
+            int dictIndex = 0;
             int currentIndex = 0;
             while (true) {
                 var startIndex = inputText.IndexOf(hrefStartTag, currentIndex);
@@ -97,7 +103,8 @@ namespace TinyBrowser
                 if (endIndex == -1)
                     break;
                 var htmlContent = inputText[startIndex..endIndex];
-                hrefDict.Add(attribute, htmlContent);
+                hrefDict.Add(dictIndex, (attribute, htmlContent));
+                dictIndex++;
                 currentIndex = endIndex;
             }
             return hrefDict;
