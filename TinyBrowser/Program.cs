@@ -4,7 +4,9 @@
     {
         static void Main(string[] args) {
             Browser browser = new Browser();
-            browser.Browse();
+            bool running = true;
+            while (running)
+                browser.Browse();
         }
     }
 }

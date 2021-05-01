@@ -31,12 +31,11 @@ namespace TinyBrowser {
             var hrefDict = GetHrefDict(response);
             DisplayHrefs(hrefDict);
             
-            int input = AwaitUserInput(hrefDict.Count);
-            var requestedUri = InterpretInput(input, hrefDict);
+            int input = AwaitUserInput(hrefDict.Count -1 );
+            Uri requestedUri = InterpretInput(input, hrefDict);
 
             this.hostName = requestedUri.Host;
             this.path = requestedUri.LocalPath;
-            Browse();
         }
 
         private static void DisplayTitle(string response) {
@@ -60,7 +59,7 @@ namespace TinyBrowser {
             stream = tcpClient.GetStream();
             streamWriter = new StreamWriter(stream, Encoding.ASCII);
             streamWriter.Write(GetRequest); // add data to the buffer
-            streamWriter.Flush(); // send the buffered data
+            streamWriter.Flush();           // send the buffered data
         }
         
         private string StreamHostData() {
@@ -81,14 +80,17 @@ namespace TinyBrowser {
         }
         
         private Uri InterpretInput(int input, in Dictionary<int, (string,string)> hrefDict) {
-            Console.WriteLine($"Interpreting {input}...");
             string attribute = hrefDict[input].Item1;
+            Console.WriteLine($"Interpreting {input}, {attribute}");
             return InterpretAttribute(attribute);
         }
 
         private Uri InterpretAttribute(in string attribute) {
             UriBuilder result = new UriBuilder();
-            if (attribute.EndsWith('/')) {
+
+            if (attribute.Contains(".com"))
+                result.Host = attribute;
+            else if (attribute.EndsWith('/')) {
                 result.Path = attribute[0] == '/' ? attribute : '/' + attribute;
                 result.Host = hostName;
             }
