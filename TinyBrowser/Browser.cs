@@ -104,6 +104,10 @@ namespace TinyBrowser {
                     newBrowseInstructionsReceived = true;
                 }
             }
+            else if (c == 'r') {
+                Console.WriteLine("refresh requested");
+                newBrowseInstructionsReceived = true;
+            }
             return newBrowseInstructionsReceived;
         }
 
@@ -153,6 +157,7 @@ namespace TinyBrowser {
             Console.WriteLine($"select navigation target (number between {0} and {numOptions}). >");
             Console.WriteLine($"or enter 'b' to go backward");
             Console.WriteLine($"or enter 'f' to go forward");
+            Console.WriteLine($"or enter 'r' to refresh");
             Console.WriteLine($"or enter 'q' to quit");
             return Console.ReadLine();
         }
@@ -165,7 +170,7 @@ namespace TinyBrowser {
             if (inputString.Length != 1)
                 return false;
             char c = char.Parse(inputString);
-            return c == 'b' || c == 'f' || c == 'q';
+            return c == 'b' || c == 'f' || c == 'q' || c == 'r';
         }
 
         private bool IsValidNumericInput(string input, int maxVal) {
