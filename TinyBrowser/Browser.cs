@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Xml;
 
 namespace TinyBrowser {
     public class Browser {
@@ -15,27 +16,35 @@ namespace TinyBrowser {
         private StreamWriter streamWriter;
 
         private string GetRequest => $"GET {path} HTTP/1.1\r\nHost: {hostName}\r\n\r\n";
-        
+
         public Browser(string hostName = "acme.com", string path = "/", int port = 80) {
             this.hostName = hostName;
             this.path = path;
             this.port = port;
         }
         
-        public void Browse() {
+        public bool Browse() {
             ConnectToHost();
-            
             string response = StreamHostData();
             DisplayTitle(response);
             
             var hrefDict = GetHrefDict(response);
             DisplayHrefs(hrefDict);
             
-            int input = AwaitUserInput(hrefDict.Count -1 );
+            int input = AwaitUserInput(hrefDict.Count-1, out bool quitRequested);
+            if (quitRequested)
+                return true;
+            
             Uri requestedUri = InterpretInput(input, hrefDict);
-
             this.hostName = requestedUri.Host;
             this.path = requestedUri.LocalPath;
+            return false;
+        }
+
+        public void CloseConnection() {
+            Console.WriteLine("closing connection...");
+            stream.Close();
+            tcpClient.Close();
         }
 
         private static void DisplayTitle(string response) {
@@ -67,16 +76,26 @@ namespace TinyBrowser {
             return streamReader.ReadToEnd();
         }
 
-        private int AwaitUserInput(int numOptions) {
-            int input = -1;
+        private int AwaitUserInput(int numOptions, out bool quitRequested) {
             Console.WriteLine($"select navigation target (number between {0} and {numOptions}). >");
+            Console.WriteLine($"or enter 'q' to quit");
 
-            while (!(0 <= input && input <= numOptions)) {
-                input = Convert.ToInt32(Console.ReadLine());
-                if (!(0 <= input && input <= numOptions))
+            quitRequested = false;
+            string inputString;
+            int inputNumeric = -1;
+            while (!(0 <= inputNumeric && inputNumeric <= numOptions)) {
+                inputString = Console.ReadLine();
+                inputNumeric = -1;
+                if (inputString.Equals("q", StringComparison.OrdinalIgnoreCase)) {
+                    quitRequested = true;
+                    return inputNumeric;
+                }
+
+                inputNumeric = Convert.ToInt32(inputString);
+                if (!(0 <= inputNumeric && inputNumeric <= numOptions))
                     Console.WriteLine($"invalid input, input (number between {0} and {numOptions}). >");
             }
-            return input;
+            return inputNumeric;
         }
         
         private Uri InterpretInput(int input, in Dictionary<int, (string,string)> hrefDict) {
@@ -107,23 +126,23 @@ namespace TinyBrowser {
             }
             return result;
         }
-
-        static IEnumerable<string> GetAllBetweenTags(string inputText, string startTag, string endTag) {
-            int currentIndex = 0;
-            Console.WriteLine($"finding occurrences between {startTag} and {endTag}...");
-            while (true) {
-                var startIndex = inputText.IndexOf(startTag, currentIndex);
-                if (startIndex == -1)
-                    yield break;
-                startIndex += startTag.Length;
-                var endIndex = inputText.IndexOf(endTag, startIndex);
-                if (endIndex == -1)
-                    yield break;
-                yield return inputText[(startIndex)..endIndex];
-                currentIndex = endIndex;
-            }
-        }
-        
+        //
+        // static IEnumerable<string> GetAllBetweenTags(string inputText, string startTag, string endTag) {
+        //     int currentIndex = 0;
+        //     Console.WriteLine($"finding occurrences between {startTag} and {endTag}...");
+        //     while (true) {
+        //         var startIndex = inputText.IndexOf(startTag, currentIndex);
+        //         if (startIndex == -1)
+        //             yield break;
+        //         startIndex += startTag.Length;
+        //         var endIndex = inputText.IndexOf(endTag, startIndex);
+        //         if (endIndex == -1)
+        //             yield break;
+        //         yield return inputText[(startIndex)..endIndex];
+        //         currentIndex = endIndex;
+        //     }
+        // }
+        //
         static Dictionary<int, (string, string)> GetHrefDict(string inputText) {
             const string hrefStartTag = "<a href=\""; 
             const string attributeDelim = "\"";
@@ -161,6 +180,9 @@ namespace TinyBrowser {
         private static class Tags {
             public const string titleStartTag = "<title>";
             public const string titleEndTag = "</title>";
+            
         }
+        
+        
     }
 }
