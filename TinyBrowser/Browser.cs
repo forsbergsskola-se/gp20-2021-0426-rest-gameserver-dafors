@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
-using System.Xml;
 
 namespace TinyBrowser {
     public class Browser {
-        private string hostName; // = "acme.com";
+        private string hostName; // = "www.acme.com";
         private string path; // = "/";
         private int port;
 
         private TcpClient tcpClient;
         private Stream stream;
         private StreamWriter streamWriter;
+        private Stack<Uri> backStack;
+        private Stack<Uri> forwardStack;
 
         private string GetRequest => $"GET {path} HTTP/1.1\r\nHost: {hostName}\r\n\r\n";
 
@@ -21,6 +22,8 @@ namespace TinyBrowser {
             this.hostName = hostName;
             this.path = path;
             this.port = port;
+            this.backStack = new Stack<Uri>();
+            this.forwardStack = new Stack<Uri>();
         }
         
         public bool Browse() {
@@ -31,17 +34,41 @@ namespace TinyBrowser {
             var hrefDict = GetHrefDict(response);
             DisplayHrefs(hrefDict);
             
-            int input = AwaitUserInput(hrefDict.Count-1, out bool quitRequested);
-            if (quitRequested)
-                return true;
+            string input = AwaitUserInput(hrefDict.Count-1);
             
-            Uri requestedUri = InterpretInput(input, hrefDict);
+            if (IsValidCommandInput(input)) {
+                bool quitRequested = HandleCommand(input);
+                return quitRequested;
+            }
+            
+            int requestedNr = Convert.ToInt32(input);
+            Uri requestedUri = InterpretInput(requestedNr, hrefDict);
             this.hostName = requestedUri.Host;
             this.path = requestedUri.LocalPath;
             return false;
         }
 
-        public void CloseConnection() {
+        private bool HandleCommand(string input) {
+            char c = char.Parse(input);
+            bool quitRequested = false;
+            if (c == 'b') {
+                Console.WriteLine("back requested");
+                
+                //TODO 
+            }
+            else if (c == 'f') {
+                Console.WriteLine("forward requested");
+                //TODO 
+            }
+            else if (c == 'q') {
+                Console.WriteLine("quit requested");
+                CloseConnection();
+                quitRequested = true;
+            }
+            return quitRequested;
+        }
+
+        private void CloseConnection() {
             Console.WriteLine("closing connection...");
             stream.Close();
             tcpClient.Close();
@@ -53,17 +80,20 @@ namespace TinyBrowser {
         }
 
         private static void DisplayHrefs(Dictionary<int, (string, string)> hrefDict) {
-
-            Console.WriteLine("------------------Printing hrefs------------------");
-
-            foreach (var kvp in hrefDict) {
-                Console.WriteLine($"{kvp.Key} -> {kvp.Value.Item1}, {kvp.Value.Item2}");
+            if (hrefDict.Count <= 0) {
+                Console.WriteLine("------------------ No hrefs found ------------------");
+            }
+            else {
+                Console.WriteLine("------------------ Printing hrefs ------------------");
+                foreach (var kvp in hrefDict) {
+                    Console.WriteLine($"{kvp.Key} -> {kvp.Value.Item1}, {kvp.Value.Item2}");
+                }                
             }
         }
 
         private void ConnectToHost() {
             var uriBuilder = new UriBuilder(null, hostName) {Path = path};
-            Console.WriteLine( $"------------------Connecting to {uriBuilder}...------------------");
+            Console.WriteLine( $"------------------ Connecting to {uriBuilder} ------------------");
             tcpClient = new TcpClient(hostName, port);
             stream = tcpClient.GetStream();
             streamWriter = new StreamWriter(stream, Encoding.ASCII);
@@ -76,26 +106,34 @@ namespace TinyBrowser {
             return streamReader.ReadToEnd();
         }
 
-        private int AwaitUserInput(int numOptions, out bool quitRequested) {
+        private string AwaitUserInput(int numOptions) {
             Console.WriteLine($"select navigation target (number between {0} and {numOptions}). >");
+            Console.WriteLine($"or enter 'b' to go backward");
+            Console.WriteLine($"or enter 'f' to go forward");
             Console.WriteLine($"or enter 'q' to quit");
-
-            quitRequested = false;
-            string inputString;
-            int inputNumeric = -1;
-            while (!(0 <= inputNumeric && inputNumeric <= numOptions)) {
+            
+            string inputString = Console.ReadLine();;
+            while (!IsValidInput(inputString, numOptions)) {
                 inputString = Console.ReadLine();
-                inputNumeric = -1;
-                if (inputString.Equals("q", StringComparison.OrdinalIgnoreCase)) {
-                    quitRequested = true;
-                    return inputNumeric;
-                }
-
-                inputNumeric = Convert.ToInt32(inputString);
-                if (!(0 <= inputNumeric && inputNumeric <= numOptions))
-                    Console.WriteLine($"invalid input, input (number between {0} and {numOptions}). >");
             }
-            return inputNumeric;
+            return inputString;
+        }
+
+        private bool IsValidInput(string inputString, int numOptions) {
+            return IsValidCommandInput(inputString) || IsValidNumericInput(inputString, numOptions);
+        }
+
+        private bool IsValidCommandInput(string inputString) {
+            if (inputString.Length != 1)
+                return false;
+            char c = char.Parse(inputString);
+            return c == 'b' || c == 'f' || c == 'q';
+        }
+
+        private bool IsValidNumericInput(string input, int maxVal) {
+            if (!int.TryParse(input, out int inputNumeric))
+                return false;
+            return 0 <= inputNumeric && inputNumeric <= maxVal;
         }
         
         private Uri InterpretInput(int input, in Dictionary<int, (string,string)> hrefDict) {
@@ -107,13 +145,20 @@ namespace TinyBrowser {
         private Uri InterpretAttribute(in string attribute) {
             UriBuilder result = new UriBuilder();
 
-            if (attribute.Contains(".com"))
-                result.Host = attribute;
-            else if (attribute.EndsWith('/')) {
+            if (attribute.Contains("http") || attribute.Contains("www.")) {
+                GetHostAndPath(attribute, ref result);
+            }
+            else {
                 result.Path = attribute[0] == '/' ? attribute : '/' + attribute;
-                result.Host = hostName;
+                result.Host = this.hostName;
             }
             return result.Uri;
+        }
+
+        private void GetHostAndPath(in string str, ref UriBuilder uriBuilder) {
+            Uri uri = new Uri(str);
+            uriBuilder.Host = uri.Host;
+            uriBuilder.Path = uri.PathAndQuery;
         }
         
         private static string FindTextBetweenTags(string inputText, string startTag, string endTag, int startOffset = 0) {
@@ -126,23 +171,7 @@ namespace TinyBrowser {
             }
             return result;
         }
-        //
-        // static IEnumerable<string> GetAllBetweenTags(string inputText, string startTag, string endTag) {
-        //     int currentIndex = 0;
-        //     Console.WriteLine($"finding occurrences between {startTag} and {endTag}...");
-        //     while (true) {
-        //         var startIndex = inputText.IndexOf(startTag, currentIndex);
-        //         if (startIndex == -1)
-        //             yield break;
-        //         startIndex += startTag.Length;
-        //         var endIndex = inputText.IndexOf(endTag, startIndex);
-        //         if (endIndex == -1)
-        //             yield break;
-        //         yield return inputText[(startIndex)..endIndex];
-        //         currentIndex = endIndex;
-        //     }
-        // }
-        //
+
         static Dictionary<int, (string, string)> GetHrefDict(string inputText) {
             const string hrefStartTag = "<a href=\""; 
             const string attributeDelim = "\"";

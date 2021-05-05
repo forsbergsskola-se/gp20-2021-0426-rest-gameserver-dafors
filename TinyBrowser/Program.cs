@@ -8,8 +8,6 @@
             
             while (!quitRequested)
                 quitRequested = browser.Browse();
-            
-            browser.CloseConnection();
         }
     }
 }
