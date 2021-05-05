@@ -4,10 +4,10 @@
     {
         static void Main(string[] args) {
             Browser browser = new Browser();
-            bool quitRequested = false;
-            
-            while (!quitRequested)
-                quitRequested = browser.Browse();
+            bool browsing = true;
+           
+            while (browsing)
+                browsing = browser.Browse();
         }
     }
 }

@@ -13,10 +13,12 @@ namespace TinyBrowser {
         private TcpClient tcpClient;
         private Stream stream;
         private StreamWriter streamWriter;
+        
         private Stack<Uri> backStack;
         private Stack<Uri> forwardStack;
 
         private string GetRequest => $"GET {path} HTTP/1.1\r\nHost: {hostName}\r\n\r\n";
+        private Uri CurrentUri => new UriBuilder(){Host = this.hostName, Path = this.path}.Uri;
 
         public Browser(string hostName = "acme.com", string path = "/", int port = 80) {
             this.hostName = hostName;
@@ -33,39 +35,80 @@ namespace TinyBrowser {
             
             var hrefDict = GetHrefDict(response);
             DisplayHrefs(hrefDict);
+
+            bool browseInstructionsReceived = AwaitNewBrowseInstructions(hrefDict);
+            if (!browseInstructionsReceived)
+                CloseConnection();
             
-            string input = AwaitUserInput(hrefDict.Count-1);
-            
-            if (IsValidCommandInput(input)) {
-                bool quitRequested = HandleCommand(input);
-                return quitRequested;
+            return browseInstructionsReceived;
+        }
+
+        private bool AwaitNewBrowseInstructions(Dictionary<int, (string, string)> hrefDict) {
+            string input;
+            bool newBrowseInstructionsReceived = false;
+            while (!newBrowseInstructionsReceived) {
+                input = PromptUserInput(hrefDict.Count-1);
+                
+                if (QuitRequested(input))
+                    return false;
+                
+                if (IsValidNumericInput(input, hrefDict.Count-1)) {
+                    EnqueueRequestedPage(hrefDict, input);
+                    return true;
+                }
+                
+                if (IsValidCommandInput(input)) {
+                    newBrowseInstructionsReceived = HandleCommand(input);
+                }
+                else {
+                    Console.WriteLine("invalid request.");
+                }
             }
-            
-            int requestedNr = Convert.ToInt32(input);
-            Uri requestedUri = InterpretInput(requestedNr, hrefDict);
-            this.hostName = requestedUri.Host;
-            this.path = requestedUri.LocalPath;
-            return false;
+            return true;
+        }
+
+        private void EnqueueRequestedPage(Dictionary<int, (string, string)> hrefDict, string input) {
+            backStack.Push(this.CurrentUri);
+            Uri uri = GetRequestedUri(int.Parse(input), hrefDict);
+            this.hostName = uri.Host;
+            this.path = uri.PathAndQuery;
         }
 
         private bool HandleCommand(string input) {
             char c = char.Parse(input);
-            bool quitRequested = false;
+            bool newBrowseInstructionsReceived = false;
+
             if (c == 'b') {
                 Console.WriteLine("back requested");
-                
-                //TODO 
+                if (backStack.Count == 0) {
+                    Console.WriteLine("no previous entries, returning to page");
+                }
+                else {
+                    forwardStack.Push(this.CurrentUri);
+                    Uri back = backStack.Pop();
+                    this.hostName = back.Host;
+                    this.path = back.PathAndQuery;
+                    newBrowseInstructionsReceived = true;
+                }
             }
             else if (c == 'f') {
                 Console.WriteLine("forward requested");
-                //TODO 
+                if (forwardStack.Count == 0) {
+                    Console.WriteLine("no forward entries, returning to page");
+                }
+                else {
+                    backStack.Push(this.CurrentUri);
+                    Uri forward = forwardStack.Pop();
+                    this.hostName = forward.Host;
+                    this.path = forward.PathAndQuery;
+                    newBrowseInstructionsReceived = true;
+                }
             }
-            else if (c == 'q') {
-                Console.WriteLine("quit requested");
-                CloseConnection();
-                quitRequested = true;
-            }
-            return quitRequested;
+            return newBrowseInstructionsReceived;
+        }
+
+        private bool QuitRequested(string input) {
+            return char.TryParse(input, out char c) && c == 'q';
         }
 
         private void CloseConnection() {
@@ -106,17 +149,12 @@ namespace TinyBrowser {
             return streamReader.ReadToEnd();
         }
 
-        private string AwaitUserInput(int numOptions) {
+        private string PromptUserInput(int numOptions) {
             Console.WriteLine($"select navigation target (number between {0} and {numOptions}). >");
             Console.WriteLine($"or enter 'b' to go backward");
             Console.WriteLine($"or enter 'f' to go forward");
             Console.WriteLine($"or enter 'q' to quit");
-            
-            string inputString = Console.ReadLine();;
-            while (!IsValidInput(inputString, numOptions)) {
-                inputString = Console.ReadLine();
-            }
-            return inputString;
+            return Console.ReadLine();
         }
 
         private bool IsValidInput(string inputString, int numOptions) {
@@ -136,7 +174,7 @@ namespace TinyBrowser {
             return 0 <= inputNumeric && inputNumeric <= maxVal;
         }
         
-        private Uri InterpretInput(int input, in Dictionary<int, (string,string)> hrefDict) {
+        private Uri GetRequestedUri(int input, in Dictionary<int, (string,string)> hrefDict) {
             string attribute = hrefDict[input].Item1;
             Console.WriteLine($"Interpreting {input}, {attribute}");
             return InterpretAttribute(attribute);
@@ -209,9 +247,7 @@ namespace TinyBrowser {
         private static class Tags {
             public const string titleStartTag = "<title>";
             public const string titleEndTag = "</title>";
-            
         }
-        
-        
+
     }
 }
