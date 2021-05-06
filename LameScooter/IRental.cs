@@ -2,7 +2,7 @@
 
 namespace LameScooter {
     public interface IRental {
-        public int GetScooterCount(string nameOfStation);
+        public int GetScooterCountInStation(string nameOfStation);
         public void Init(string uri);
     }
 

@@ -58,7 +58,7 @@ namespace LameScooter {
             }
         }
 
-        public int GetScooterCount(string nameOfStation) {
+        public int GetScooterCountInStation(string nameOfStation) {
             return stationLookup[nameOfStation].bikesAvailable;
         }
 
