@@ -36,7 +36,6 @@ namespace LameScooter
             try {
                 Console.WriteLine($"station {stationToQuery} has {rental.GetScooterCountInStation(stationToQuery)}");
             }
-            
             catch (NotFoundException e) {
                 Console.WriteLine("An exception ({0}) occurred.", e.GetType().Name);
                 Console.WriteLine("Message:\n   {0}\n", e.Message);
@@ -47,8 +46,6 @@ namespace LameScooter
                 Console.WriteLine("Message:\n   {0}\n", e.Message);
                 Console.WriteLine("Stack Trace:\n   {0}\n", e.StackTrace);
             }
-            
-            //var count = await rental.GetScooterCountInStation(args[0]); // Replace with command line argument.
         }
         
     }

@@ -20,24 +20,8 @@ namespace LameScooter {
         public string state { get; set; }
         public List<string> networks { get; set; }
         public bool realTimeData { get; set; }
-
         public override string ToString() {
             return name;
         }
-
-        // public int id;
-        // public string name;
-        // public float x;
-        // public float y;
-        // public int bikesAvailable;
-        // public int spacesAvailable;
-        // public int capacity;
-        // public bool allowDropoff;
-        // public bool allowOverLoading;
-        // public bool isFloatingBike;
-        // public bool isCarStation;
-        // public string state;
-        // public string[] networks;
-        // public bool realTimeData;
     }
 }

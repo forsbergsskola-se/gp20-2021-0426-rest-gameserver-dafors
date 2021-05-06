@@ -46,6 +46,5 @@ namespace LameScooter {
         private static bool ContainsDigit(string s) {
             return s.Any(c => char.IsDigit(c));
         }
-
     }
 }
