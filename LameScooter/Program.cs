@@ -12,6 +12,10 @@ namespace LameScooter
             string fileUri;
             IRentalAsync rental;
             switch (rentalDatabase) {
+                case "realtime":
+                    rental = new RealTimeLameScooterRental();
+                    fileUri = "https://raw.githubusercontent.com/marczaku/GP20-2021-0426-Rest-Gameserver/main/assignments/scooters.json";
+                    break;
                 case "offline":
                     rental = new OfflineLameScooterRental();
                     fileUri = "scooters.json";
