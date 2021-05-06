@@ -50,7 +50,7 @@ namespace LameScooter {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
             
-            using FileStream openStream = File.OpenRead(uri);
+            await using FileStream openStream = File.OpenRead(uri);
             var list = await JsonSerializer.DeserializeAsync<List<LameScooterStationList>>(openStream, options);
 
             stationLookup = new Dictionary<string, LameScooterStationList>();

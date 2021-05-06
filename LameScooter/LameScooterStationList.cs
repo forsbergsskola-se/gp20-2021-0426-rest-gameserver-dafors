@@ -1,6 +1,11 @@
 ﻿using System.Collections.Generic;
 namespace LameScooter {
     public class LameScooterStationList {
+        public LameScooterStationList(string name, int bikesAvailable) {
+            this.name = name;
+            this.bikesAvailable = bikesAvailable;
+        }
+        
         public string id { get; set; }
         public string name { get; set; }
         public double x { get; set; }
