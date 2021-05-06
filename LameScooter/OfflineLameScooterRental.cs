@@ -62,7 +62,11 @@ namespace LameScooter {
         public int GetScooterCountInStation(string nameOfStation) {
             if (ContainsDigit(nameOfStation))
                 throw new System.ArgumentException($"{nameOfStation} contains numerals");
-            return stationLookup[nameOfStation].bikesAvailable;
+
+            if (stationLookup.TryGetValue(nameOfStation, out LameScooterStationList val)) {
+                return val.bikesAvailable;    
+            }
+            throw new NotFoundException($"{nameOfStation} not found");
         }
         
         private static bool ContainsDigit(string s) {

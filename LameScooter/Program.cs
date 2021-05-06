@@ -13,7 +13,19 @@ namespace LameScooter
             //rental.Init(localJsonPath);
             rental.InitAsync(localJsonPath).GetAwaiter().GetResult();
             foreach (var arg in args) {
-                Console.WriteLine($"station {arg} has {rental.GetScooterCountInStation(arg)}");
+                try {
+                    Console.WriteLine($"station {arg} has {rental.GetScooterCountInStation(arg)}");
+                }
+                catch (NotFoundException e) {
+                    Console.WriteLine("An exception ({0}) occurred.", e.GetType().Name);
+                    Console.WriteLine("Message:\n   {0}\n", e.Message);
+                    Console.WriteLine("Stack Trace:\n   {0}\n", e.StackTrace);
+                }
+                catch (ArgumentException e) {
+                    Console.WriteLine("An exception ({0}) occurred.", e.GetType().Name);
+                    Console.WriteLine("Message:\n   {0}\n", e.Message);
+                    Console.WriteLine("Stack Trace:\n   {0}\n", e.StackTrace);
+                }
             }
             
             //Address address = JsonConvert.DeserializeObject<Address>(json);
