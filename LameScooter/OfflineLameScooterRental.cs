@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -59,7 +60,13 @@ namespace LameScooter {
         }
 
         public int GetScooterCountInStation(string nameOfStation) {
+            if (ContainsDigit(nameOfStation))
+                throw new System.ArgumentException($"{nameOfStation} contains numerals");
             return stationLookup[nameOfStation].bikesAvailable;
+        }
+        
+        private static bool ContainsDigit(string s) {
+            return s.Any(c => char.IsDigit(c));
         }
 
     }
