@@ -2,6 +2,7 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -12,16 +13,25 @@ namespace GitHubExplorer
     {
         static readonly HttpClient client = new HttpClient();
         static async Task Main(string[] args) {
-            var result = await ProcessResponse();
+            Console.WriteLine("Enter user to navigate to");
+            string input = Console.ReadLine();
+            var result = await ProcessResponse(input);
             UserInfo userInfo = result.Item1;
             MainPageUris mainPageUris = result.Item2;
             Console.WriteLine(userInfo);
+            PropertyInfo[] propInfos = mainPageUris.GetType().GetProperties();
+            int index = 0;
+            foreach (PropertyInfo prop in propInfos) {
+                Console.WriteLine($"{index} --> {prop.Name} ({prop.PropertyType.Name}): {prop.GetValue(mainPageUris)}");
+                index++;
+            }
+            //Console.WriteLine("length: " + propInfos.Length);
+            Console.WriteLine("navigation options: ");
         }
 
         private static async Task<(UserInfo, MainPageUris)> ProcessResponse(string user = "marczaku") {
             client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             client.DefaultRequestHeaders.Add("User-Agent", "korv");
             
             Task<string> stringTask = client.GetStringAsync($"https://api.github.com/users/{user}");
@@ -55,7 +65,6 @@ namespace GitHubExplorer
     public class MainPageUris {
         [JsonPropertyName("organizations_url")]
         public Uri OrganizationsUrl { get; set; }
-
         [JsonPropertyName("repos_url")]
         public Uri ReposUrl { get; set; }
     }
