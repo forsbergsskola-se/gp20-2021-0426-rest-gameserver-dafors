@@ -7,12 +7,12 @@ namespace GitHubExplorer
     static class Program
     {
         static async Task Main(string[] args) {
-            ApiClient apiClient = new ApiClient();
-            bool running = true;
-            while (running) {
-                running = await apiClient.Run();
+            GithubApiClient githubApiClient = new GithubApiClient();
+            bool quitRequested = false;
+            while (!quitRequested) {
+                quitRequested = await githubApiClient.Run();
             }
-            Console.WriteLine("Application closing");
+            Console.WriteLine("Application closing...");
         }
     }
 }
