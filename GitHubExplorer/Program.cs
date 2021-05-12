@@ -6,12 +6,14 @@ namespace GitHubExplorer
 {
     static class Program
     {
-        static async Task Main(string[] args) {
+        //static async Task Main(string[] args) {
+        static void Main(string[] args) {
             GithubApiClient githubApiClient = new GithubApiClient();
-            bool quitRequested = false;
-            while (!quitRequested) {
-                quitRequested = await githubApiClient.Run();
-            }
+            // bool quitRequested = false;
+            // while (!quitRequested) {
+            //     quitRequested = await githubApiClient.Run();
+            // }
+            githubApiClient.Run();
             Console.WriteLine("Application closing...");
         }
     }

@@ -1,9 +1,9 @@
 ﻿// https://stackoverflow.com/questions/55046717/json-deserialization-how-do-i-add-remaining-items-into-a-dictionary
+
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -11,8 +11,6 @@ using Newtonsoft.Json.Linq;
 namespace GitHubExplorer {
     public class GithubApiClient {
         static readonly HttpClient client = new HttpClient();
-        private State currentState;
-        //private string user = null;
         private IGitHubAPI gitHubApi = null;
         private IUser user = null;
 
@@ -20,139 +18,84 @@ namespace GitHubExplorer {
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             client.DefaultRequestHeaders.Add("User-Agent", "korv");
-            currentState = State.FindUser;
             gitHubApi = new GithubApi(client);
         }
 
-        public enum State {
-            FindUser,
-            User,
-            Repositories,
-            Issues,
-            Unsupported
-        }
-
-        public async Task<bool> Run() {
-            bool quitRequested = false;
-
-            switch (currentState) {
-                case State.FindUser:
-                    quitRequested = FindUser();
+        public void Run() {
+            ShowInstructions();
+            while (true) {
+                string input = PromptUserInstructions();
+                if (QuitRequested(input))
                     break;
-                case State.User:
-                    quitRequested = HandleUserState();
-                    break;
-                case State.Repositories:
-                    break;
-                case State.Issues:
-                    break;
-                case State.Unsupported:
-                    break;
+                ProcessUserInput(input);
             }
-
-            return quitRequested;
-            var result = await ProcessResponse();
-            UserJson userJson = result.Item1;
-            MainPageUris mainPageUris = result.Item2;
-            Console.WriteLine(userJson);
-            PropertyInfo[] propInfos = mainPageUris.GetType().GetProperties();
-            int index = 0;
-            foreach (PropertyInfo prop in propInfos) {
-                Console.WriteLine($"{index} --> {prop.Name} ({prop.PropertyType.Name}): {prop.GetValue(mainPageUris)}");
-                //Uri uri = (Uri) prop.GetValue(mainPageUris);
-                index++;
-            }
-
-            //Console.WriteLine("length: " + propInfos.Length);
-            Console.WriteLine("navigation options: ");
-            return true;
-        }
-
-        private bool FindUser() {
-            bool quitRequested = false;
-            while (!quitRequested && this.user == null)
-                quitRequested = NavigateToRequestedUser();
-            currentState = State.User;
-            return quitRequested;
         }
         
-        private bool NavigateToRequestedUser() {
-            Console.WriteLine($"Enter user to navigate to.");
-            Console.WriteLine("Enter 'q' to quit.");
-            string input = Console.ReadLine();
-            if (QuitRequested(input))
-                return true;
-
-            user = gitHubApi.GetUser(input);
-            return false;
-        }
-
-        private bool HandleUserState() {
-            bool quitRequested = false;
-            bool stateTransition = false;
+        private void ProcessUserInput(string input) {
+            string[] words = input.Split(' ');
             
-            while (!quitRequested && !stateTransition) {
-                string input = PromptUserInstructions();
-                switch (input) {
-                    case "d":
-                        Console.WriteLine(user.Description);
+            if (words.Length == 1) {
+                switch (words[0]) {
+                    case "description":
+                        if (user != null)
+                            Console.WriteLine(user.Description);
+                        else
+                            Console.WriteLine("no user selected");
                         break;
-                    case "r":
-                        Console.WriteLine("TODO navigate to repos");
+                    case "repos":
+                        if (user != null)
+                            foreach (var repo in user.Repositories()) {
+                                Console.WriteLine(repo);
+                            }
+                        else
+                            Console.WriteLine("no user selected");
                         break;
-                    case "c":
-                        Console.WriteLine("TODO see all options");
+                    case "help":
+                        ShowInstructions();
                         break;
-                    case "n":
-                        currentState = State.FindUser;
-                        stateTransition = true;
+                    default:
+                        Console.WriteLine("undefined command");
                         break;
-                    case "q":
-                        quitRequested = true;
+                }    
+            }
+            else if (words.Length == 2) {
+                switch (words[0]) {
+                    case "user":
+                        this.user = gitHubApi.GetUser(words[1]);
+                        break;
+                    case "repo":
+                        if (this.user == null)
+                            Console.WriteLine("no user selected");
+                        else
+                            user.GetRepository(words[1]);
+                        break;
+                    case "unmanaged":
                         break;
                     default:
                         Console.WriteLine("undefined command");
                         break;
                 }
             }
-            return quitRequested;
-        }
-
-        private string PromptUserInstructions() {
-            Console.WriteLine($"enter 'd' for description");
-            Console.WriteLine($"enter 'r' to navigate to repos");
-            Console.WriteLine($"enter 'c' to see all (untested) options");
-            Console.WriteLine($"enter 'n' to navigate to new user");
-            Console.WriteLine($"enter 'q' to quit");
-            return Console.ReadLine();
+            else {
+                Console.WriteLine("undefined command");
+            }
         }
         
-        private bool HandleUserInstructions() {
-            string input;
-            
-            return true;
+        private string PromptUserInstructions() {
+            Console.WriteLine(this.user == null ? $"(base) GithubAPI >" : $"({this.user.Name}) GithubAPI >");
+            return Console.ReadLine();
         }
 
-
-        // private static async Task<(UserJson, MainPageUris)> ProcessResponse(string user = "marczaku") {
-        //     Task<string> stringTask = client.GetStringAsync($"https://api.github.com/users/{user}");
-        //     //string message = await stringTask;
-        //     //Task<Stream> streamTask = client.GetStreamAsync($"https://api.github.com/users/{user}");
-        //     //UserInfo userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await streamTask);
-        //     //MainPageUris mainPageUris = await JsonSerializer.DeserializeAsync<MainPageUris>(await streamTask);
-        //     
-        //     //UserJson userJson = JsonSerializer.Deserialize<UserJson>(await stringTask);
-        //     //MainPageUris mainPageUris = JsonSerializer.Deserialize<MainPageUris>(await stringTask);
-        //     
-        //     // IDictionary<string, JToken> jsondata = JObject.Parse(await stringTask);
-        //     // Console.WriteLine("KVPS");
-        //     // foreach (var kvp in jsondata) {
-        //     //     Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
-        //     // }
-        //     return (null, null);
-        //     //return (userJson, mainPageUris);
-        // }
-
+        private void ShowInstructions() {
+            Console.WriteLine($"'unmanaged options' to navigate unmanaged options");
+            Console.WriteLine($"'user <user>' to navigate to new user");
+            Console.WriteLine($"'description' shows description");
+            Console.WriteLine($"'repos' shows current users repos");
+            Console.WriteLine($"'repo <repo>' shows repo for selected user");
+            Console.WriteLine($"'help' for list commands");
+            Console.WriteLine($"'exit' quit application");
+        }
+        
         private static async Task<T> ProcessResponse<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
             //return JsonSerializer.Deserialize<T>(await stringTask);
@@ -165,13 +108,8 @@ namespace GitHubExplorer {
         }
         
         private bool QuitRequested(string input) {
-            return char.TryParse(input, out char c) && c == 'q';
+            return input == "exit";
         }
-    }
-    
-    public class Repository : IRepository {
-        public string Name { get; }
-        public string Description { get; }
     }
 
     public class MainPageUris {
@@ -182,11 +120,6 @@ namespace GitHubExplorer {
         private IDictionary<string, JToken> _additionalData;
     }
 
-    public class UknownClass {
-        [System.Text.Json.Serialization.JsonExtensionData]
-        private IDictionary<string, JToken> _additionalData;
-    }
-
     public class GithubApi : IGitHubAPI {
         private static HttpClient client;
         public GithubApi(HttpClient c) {
@@ -194,9 +127,7 @@ namespace GitHubExplorer {
         }
         public IUser GetUser(string userName) {
             try {
-                UserJson userJson = ProcessResponse<UserJson>(UserUri(userName)).GetAwaiter().GetResult();
-                List<RepoJson> repoJsonList = ProcessResponse<List<RepoJson>>(ReposUri(userName)).GetAwaiter().GetResult();
-                return new User(userJson, repoJsonList);
+                return ProcessResponse<User>(UserUri(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
                 Console.WriteLine("Error message: " + e.Message);
@@ -205,86 +136,87 @@ namespace GitHubExplorer {
             }
         }
 
-        private string UserUri(string userName) {
+        public static List<Repository> GetRepositories(string userName) {
+            try {
+                return ProcessResponse<List<Repository>>(ReposUri(userName)).GetAwaiter().GetResult();
+            }
+            catch (Exception e) {
+                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Returning null for input {userName}");
+                return null;
+            }
+        }
+
+        public static Repository GetRepository(string userName, string repoName) {
+            return GetRepository(RepoUri(userName, repoName));
+        }
+
+        public static Repository GetRepository(string url) {
+            try {
+                return ProcessResponse<Repository>(url).GetAwaiter().GetResult();
+            }
+            catch (Exception e) {
+                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Returning null for input {url}");
+                return null;
+            }
+        }
+
+        private static string UserUri(string userName) {
             return $"https://api.github.com/users/{userName}";
         }
 
-        private string ReposUri(string userName) {
+        private static string ReposUri(string userName) {
             return $"https://api.github.com/users/{userName}/repos";
+        }
+
+        private static string RepoUri(string userName, string repoName) {
+            return $"https://api.github.com/repos/{userName}/{repoName}";
         }
         
         private static async Task<T> ProcessResponse<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
-            //return JsonSerializer.Deserialize<T>(await stringTask);
             return JsonConvert.DeserializeObject<T>(await stringTask);
         }
     }
 
     public class User : IUser {
-        private IDictionary<string, JToken> _additionalData;
-        private Dictionary<string, Repo> repoDictionary;
-        private string _description;
-        public string Name { get; }
-        public string Description => _description;
-        
-        public User(UserJson userJson, List<RepoJson> repoJsonList) {
-            this.Name = userJson.Name;
-            this._description = $"Name: {Name}, Location: {userJson.Location}, Company: {userJson.Company}";
-            this._additionalData = userJson.AdditionalData;
-            
-            this.repoDictionary = new Dictionary<string, Repo>();
-            foreach (var repo in repoJsonList) {
-                repoDictionary.Add(repo.Name, new Repo(repo.Description, repo.Url));
-            }
-        }
-        
+        [JsonPropertyAttribute("login")] public string Login { get; set; }
+        [JsonPropertyAttribute("name")] public string Name { get; set; }
+        [JsonPropertyAttribute("location")] public string Location { get; set; }
+        //[JsonPropertyName("organizations_url")]
+        //public Uri OrganizationsUrl { get; set; }
+        //[JsonPropertyAttribute("repos_url")] public string ReposUrl { get; set; }
+        [JsonPropertyAttribute("company")] public string Company { get; set; }
+        [JsonExtensionData] public IDictionary<string, JToken> AdditionalData { get; set; }
+        //[JsonExtensionData] public IDictionary<string, object> AdditionalData { get; set; }
+        public string Description => $"({Login}) Name: {Name}, Location: {Location}, Company: {Company}";
+
         public IRepository GetRepository(string repository) {
-            throw new NotImplementedException();
+            //TODO
             //https://api.github.com/repos/marczaku/CityBuilder
+            return null;
         }
 
         //temp test
         public void PrintAdditionalData() {
-            foreach (var kvp in _additionalData) {
+            foreach (var kvp in AdditionalData) {
                 Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
             }
         }
 
-        public void PrintRepos() {
-            foreach (var kvp in repoDictionary) {
-                Console.WriteLine($"{kvp.Key}, {kvp.Value.Description}");
-            }
-        }
-
-        private struct Repo {
-            public string Description;
-            public string Url;
-            public Repo(string description, string url) {
-                Description = description;
-                Url = url;
+        public IEnumerable<IRepository> Repositories() {
+            var list = GithubApi.GetRepositories(Login);
+            if (list == null)
+                yield return null;
+            
+            foreach (var repo in list) {
+                yield return repo;
             }
         }
     }
-    
-    public class UserJson {
-        [JsonPropertyAttribute("name")]
-        public string Name { get; set; }
-        [JsonPropertyAttribute("location")]
-        public string Location { get; set; }
-        //[JsonPropertyName("organizations_url")]
-        //public Uri OrganizationsUrl { get; set; }
-        [Newtonsoft.Json.JsonPropertyAttribute("repos_url")]
-        public string ReposUrl { get; set; }
-        [JsonPropertyAttribute("company")]
-        public string Company { get; set; }
-        
-        [JsonExtensionData]
-        public IDictionary<string, JToken> AdditionalData { get; set; }
-        //[JsonExtensionData]
-        //public IDictionary<string, object> AdditionalData { get; set; }        
-    }
 
-    public class RepoJson {
+    public class Repository : IRepository {
         [JsonPropertyAttribute("name")]
         public string Name { get; set; }
         
@@ -293,5 +225,23 @@ namespace GitHubExplorer {
         
         [JsonPropertyAttribute("description")]
         public string Description { get; set; }
+        public override string ToString() {
+            return $"{Name}, {Description}";
+        }
+    }
+
+    public class UnmanagedClass {
+        [System.Text.Json.Serialization.JsonExtensionData]
+        private IDictionary<string, JToken> _additionalData;
     }
 }
+// Some legacy code kept for reference
+// PropertyInfo[] propInfos = mainPageUris.GetType().GetProperties();
+// int index = 0;
+// foreach (PropertyInfo prop in propInfos) {
+//     Console.WriteLine($"{index} --> {prop.Name} ({prop.PropertyType.Name}): {prop.GetValue(mainPageUris)}");
+//     //Uri uri = (Uri) prop.GetValue(mainPageUris);
+//     index++;
+// }
+
+//Console.WriteLine("length: " + propInfos.Length);
