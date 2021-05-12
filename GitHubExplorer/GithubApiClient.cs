@@ -1,6 +1,4 @@
-﻿// https://stackoverflow.com/questions/55046717/json-deserialization-how-do-i-add-remaining-items-into-a-dictionary
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -36,6 +34,14 @@ namespace GitHubExplorer {
             
             if (words.Length == 1) {
                 switch (words[0]) {
+                    case "orgs":
+                        if (user != null)
+                            foreach (var org in user.Organizations()) {
+                                Console.WriteLine(org);
+                            }
+                        else
+                            Console.WriteLine("no user selected");
+                        break;
                     case "description":
                         if (user != null)
                             Console.WriteLine(user.Description);
@@ -61,10 +67,10 @@ namespace GitHubExplorer {
             else if (words.Length == 2) {
                 switch (words[0]) {
                     case "user":
-                        this.user = gitHubApi.GetUser(words[1]);
+                        user = gitHubApi.GetUser(words[1]);
                         break;
                     case "repo":
-                        if (this.user == null)
+                        if (user == null)
                             Console.WriteLine("no user selected");
                         else
                             user.GetRepository(words[1]);
@@ -91,6 +97,7 @@ namespace GitHubExplorer {
             Console.WriteLine($"'user <user>' to navigate to new user");
             Console.WriteLine($"'description' shows description");
             Console.WriteLine($"'repos' shows current users repos");
+            Console.WriteLine($"'orgs' shows current users organizations");
             Console.WriteLine($"'repo <repo>' shows repo for selected user");
             Console.WriteLine($"'help' for list commands");
             Console.WriteLine($"'exit' quit application");
@@ -112,14 +119,6 @@ namespace GitHubExplorer {
         }
     }
 
-    public class MainPageUris {
-        [JsonPropertyAttribute("organizations_url")]
-        public Uri OrganizationsUrl { get; set; }
-        [JsonPropertyAttribute("repos_url")]
-        public Uri ReposUrl { get; set; }
-        private IDictionary<string, JToken> _additionalData;
-    }
-
     public class GithubApi : IGitHubAPI {
         private static HttpClient client;
         public GithubApi(HttpClient c) {
@@ -127,7 +126,7 @@ namespace GitHubExplorer {
         }
         public IUser GetUser(string userName) {
             try {
-                return ProcessResponse<User>(UserUri(userName)).GetAwaiter().GetResult();
+                return ProcessResponse<User>(UserUrl(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
                 Console.WriteLine("Error message: " + e.Message);
@@ -138,7 +137,7 @@ namespace GitHubExplorer {
 
         public static List<Repository> GetRepositories(string userName) {
             try {
-                return ProcessResponse<List<Repository>>(ReposUri(userName)).GetAwaiter().GetResult();
+                return ProcessResponse<List<Repository>>(ReposUrl(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
                 Console.WriteLine("Error message: " + e.Message);
@@ -148,7 +147,7 @@ namespace GitHubExplorer {
         }
 
         public static Repository GetRepository(string userName, string repoName) {
-            return GetRepository(RepoUri(userName, repoName));
+            return GetRepository(RepoUrl(userName, repoName));
         }
 
         public static Repository GetRepository(string url) {
@@ -161,17 +160,32 @@ namespace GitHubExplorer {
                 return null;
             }
         }
+        
+        public static IEnumerable<Organization> GetOrganizations(string userName) {
+            try {
+                return ProcessResponse<List<Organization>>(OrganizationsUrl(userName)).GetAwaiter().GetResult();
+            }
+            catch (Exception e) {
+                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Returning null for input {userName}");
+                return null;
+            }
+        }
 
-        private static string UserUri(string userName) {
+        private static string UserUrl(string userName) {
             return $"https://api.github.com/users/{userName}";
         }
 
-        private static string ReposUri(string userName) {
+        private static string ReposUrl(string userName) {
             return $"https://api.github.com/users/{userName}/repos";
         }
 
-        private static string RepoUri(string userName, string repoName) {
+        private static string RepoUrl(string userName, string repoName) {
             return $"https://api.github.com/repos/{userName}/{repoName}";
+        }
+
+        private static string OrganizationsUrl(string userName) {
+            return $"https://api.github.com/users/{userName}/orgs";
         }
         
         private static async Task<T> ProcessResponse<T>(string uri) {
@@ -184,25 +198,13 @@ namespace GitHubExplorer {
         [JsonPropertyAttribute("login")] public string Login { get; set; }
         [JsonPropertyAttribute("name")] public string Name { get; set; }
         [JsonPropertyAttribute("location")] public string Location { get; set; }
-        //[JsonPropertyName("organizations_url")]
-        //public Uri OrganizationsUrl { get; set; }
-        //[JsonPropertyAttribute("repos_url")] public string ReposUrl { get; set; }
         [JsonPropertyAttribute("company")] public string Company { get; set; }
         [JsonExtensionData] public IDictionary<string, JToken> AdditionalData { get; set; }
         //[JsonExtensionData] public IDictionary<string, object> AdditionalData { get; set; }
         public string Description => $"({Login}) Name: {Name}, Location: {Location}, Company: {Company}";
 
         public IRepository GetRepository(string repository) {
-            //TODO
-            //https://api.github.com/repos/marczaku/CityBuilder
-            return null;
-        }
-
-        //temp test
-        public void PrintAdditionalData() {
-            foreach (var kvp in AdditionalData) {
-                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
-            }
+            return GithubApi.GetRepository(Login, repository);
         }
 
         public IEnumerable<IRepository> Repositories() {
@@ -212,6 +214,23 @@ namespace GitHubExplorer {
             
             foreach (var repo in list) {
                 yield return repo;
+            }
+        }
+
+        public IEnumerable<Organization> Organizations() {
+            var list = GithubApi.GetOrganizations(Login);
+            if (list == null)
+                yield return null;
+            
+            foreach (var repo in list) {
+                yield return repo;
+            }
+        }
+        
+        // currently not in use
+        public void PrintAdditionalData() {
+            foreach (var kvp in AdditionalData) {
+                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
             }
         }
     }
@@ -230,9 +249,18 @@ namespace GitHubExplorer {
         }
     }
 
+    public class Organization {
+        [JsonPropertyAttribute("login")]public string Login { get; set; }
+        [JsonPropertyAttribute("public_members_url")] public string PublicMembersUrl { get; set; }
+        [JsonPropertyAttribute("description")] public string Description { get; set; }
+        [JsonExtensionData] private IDictionary<string, JToken> _additionalData;
+        public override string ToString() {
+            return $"({Login}) {Description}";
+        }
+    }
+
     public class UnmanagedClass {
-        [System.Text.Json.Serialization.JsonExtensionData]
-        private IDictionary<string, JToken> _additionalData;
+        [JsonExtensionData] private IDictionary<string, JToken> _additionalData;
     }
 }
 // Some legacy code kept for reference

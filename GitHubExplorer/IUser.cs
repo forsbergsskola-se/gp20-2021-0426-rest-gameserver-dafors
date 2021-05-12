@@ -6,7 +6,7 @@ namespace GitHubExplorer {
         IRepository GetRepository(string repository);
         string Name { get; }
         string Description { get; }
-        IEnumerable<IRepository> Repositories();
-
+        public IEnumerable<IRepository> Repositories();
+        public IEnumerable<Organization> Organizations();
     }
 }
