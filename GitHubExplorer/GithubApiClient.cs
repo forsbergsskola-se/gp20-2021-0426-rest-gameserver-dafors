@@ -75,8 +75,8 @@ namespace GitHubExplorer {
                         else
                             user.GetRepository(words[1]);
                         break;
-                    case "unmanaged":
-                        break;
+                    // case "goto": //TODO
+                    //     break;
                     default:
                         Console.WriteLine("undefined command");
                         break;
@@ -93,7 +93,8 @@ namespace GitHubExplorer {
         }
 
         private void ShowInstructions() {
-            Console.WriteLine($"'unmanaged options' to navigate unmanaged options");
+            // Console.WriteLine($"'goto <url>' to navigate to unmanaged pages"); //TODO
+            // Console.WriteLine($"'showunmanaged' to show unmanaged options for the current user"); //TODO
             Console.WriteLine($"'user <user>' to navigate to new user");
             Console.WriteLine($"'description' shows description");
             Console.WriteLine($"'repos' shows current users repos");
