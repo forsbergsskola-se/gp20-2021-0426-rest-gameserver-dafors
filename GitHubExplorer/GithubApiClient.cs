@@ -20,11 +20,12 @@ namespace GitHubExplorer {
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             client.DefaultRequestHeaders.Add("User-Agent", "korv");
-            currentState = State.User;
+            currentState = State.FindUser;
             gitHubApi = new GithubApi(client);
         }
 
         public enum State {
+            FindUser,
             User,
             Repositories,
             Issues,
@@ -33,9 +34,13 @@ namespace GitHubExplorer {
 
         public async Task<bool> Run() {
             bool quitRequested = false;
+
             switch (currentState) {
+                case State.FindUser:
+                    quitRequested = FindUser();
+                    break;
                 case State.User:
-                    return HandleUserState();
+                    quitRequested = HandleUserState();
                     break;
                 case State.Repositories:
                     break;
@@ -63,37 +68,62 @@ namespace GitHubExplorer {
             return true;
         }
 
-        private bool HandleUserState() {
+        private bool FindUser() {
             bool quitRequested = false;
             while (!quitRequested && this.user == null)
                 quitRequested = NavigateToRequestedUser();
-            
-            //Temp test
-            (user as User)?.PrintAdditionalData();
-            
-
-            return true;
-            bool viableInstructions = false;
-            while (!quitRequested && !viableInstructions) {
-                //PromptUserInstructions();
-            }
+            currentState = State.User;
             return quitRequested;
         }
-
+        
         private bool NavigateToRequestedUser() {
             Console.WriteLine($"Enter user to navigate to.");
             Console.WriteLine("Enter 'q' to quit.");
             string input = Console.ReadLine();
             if (QuitRequested(input))
                 return true;
+
             user = gitHubApi.GetUser(input);
             return false;
         }
 
-        private string PromptUserInstructions(int numOptions) {
-            Console.WriteLine($"select navigation target (number between {0} and {numOptions}). >");
-            Console.WriteLine($"or enter 'n' to navigate to new user");
-            Console.WriteLine($"or enter 'q' to quit");
+        private bool HandleUserState() {
+            bool quitRequested = false;
+            bool stateTransition = false;
+            
+            while (!quitRequested && !stateTransition) {
+                string input = PromptUserInstructions();
+                switch (input) {
+                    case "d":
+                        Console.WriteLine(user.Description);
+                        break;
+                    case "r":
+                        Console.WriteLine("TODO navigate to repos");
+                        break;
+                    case "c":
+                        Console.WriteLine("TODO see all options");
+                        break;
+                    case "n":
+                        currentState = State.FindUser;
+                        stateTransition = true;
+                        break;
+                    case "q":
+                        quitRequested = true;
+                        break;
+                    default:
+                        Console.WriteLine("undefined command");
+                        break;
+                }
+            }
+            return quitRequested;
+        }
+
+        private string PromptUserInstructions() {
+            Console.WriteLine($"enter 'd' for description");
+            Console.WriteLine($"enter 'r' to navigate to repos");
+            Console.WriteLine($"enter 'c' to see all (untested) options");
+            Console.WriteLine($"enter 'n' to navigate to new user");
+            Console.WriteLine($"enter 'q' to quit");
             return Console.ReadLine();
         }
         
@@ -104,24 +134,24 @@ namespace GitHubExplorer {
         }
 
 
-        private static async Task<(UserJson, MainPageUris)> ProcessResponse(string user = "marczaku") {
-            Task<string> stringTask = client.GetStringAsync($"https://api.github.com/users/{user}");
-            //string message = await stringTask;
-            //Task<Stream> streamTask = client.GetStreamAsync($"https://api.github.com/users/{user}");
-            //UserInfo userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await streamTask);
-            //MainPageUris mainPageUris = await JsonSerializer.DeserializeAsync<MainPageUris>(await streamTask);
-            
-            //UserJson userJson = JsonSerializer.Deserialize<UserJson>(await stringTask);
-            //MainPageUris mainPageUris = JsonSerializer.Deserialize<MainPageUris>(await stringTask);
-            
-            // IDictionary<string, JToken> jsondata = JObject.Parse(await stringTask);
-            // Console.WriteLine("KVPS");
-            // foreach (var kvp in jsondata) {
-            //     Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
-            // }
-            return (null, null);
-            //return (userJson, mainPageUris);
-        }
+        // private static async Task<(UserJson, MainPageUris)> ProcessResponse(string user = "marczaku") {
+        //     Task<string> stringTask = client.GetStringAsync($"https://api.github.com/users/{user}");
+        //     //string message = await stringTask;
+        //     //Task<Stream> streamTask = client.GetStreamAsync($"https://api.github.com/users/{user}");
+        //     //UserInfo userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await streamTask);
+        //     //MainPageUris mainPageUris = await JsonSerializer.DeserializeAsync<MainPageUris>(await streamTask);
+        //     
+        //     //UserJson userJson = JsonSerializer.Deserialize<UserJson>(await stringTask);
+        //     //MainPageUris mainPageUris = JsonSerializer.Deserialize<MainPageUris>(await stringTask);
+        //     
+        //     // IDictionary<string, JToken> jsondata = JObject.Parse(await stringTask);
+        //     // Console.WriteLine("KVPS");
+        //     // foreach (var kvp in jsondata) {
+        //     //     Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
+        //     // }
+        //     return (null, null);
+        //     //return (userJson, mainPageUris);
+        // }
 
         private static async Task<T> ProcessResponse<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
@@ -145,9 +175,9 @@ namespace GitHubExplorer {
     }
 
     public class MainPageUris {
-        [Newtonsoft.Json.JsonPropertyAttribute("organizations_url")]
+        [JsonPropertyAttribute("organizations_url")]
         public Uri OrganizationsUrl { get; set; }
-        [Newtonsoft.Json.JsonPropertyAttribute("repos_url")]
+        [JsonPropertyAttribute("repos_url")]
         public Uri ReposUrl { get; set; }
         private IDictionary<string, JToken> _additionalData;
     }
@@ -165,10 +195,12 @@ namespace GitHubExplorer {
         public IUser GetUser(string userName) {
             try {
                 UserJson userJson = ProcessResponse<UserJson>(UserUri(userName)).GetAwaiter().GetResult();
-                return new User(userJson);
+                List<RepoJson> repoJsonList = ProcessResponse<List<RepoJson>>(ReposUri(userName)).GetAwaiter().GetResult();
+                return new User(userJson, repoJsonList);
             }
             catch (Exception e) {
-                Console.WriteLine("User not, returning null Error message: " + e.Message);
+                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Returning null for input {userName}");
                 return null;
             }
         }
@@ -176,6 +208,11 @@ namespace GitHubExplorer {
         private string UserUri(string userName) {
             return $"https://api.github.com/users/{userName}";
         }
+
+        private string ReposUri(string userName) {
+            return $"https://api.github.com/users/{userName}/repos";
+        }
+        
         private static async Task<T> ProcessResponse<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
             //return JsonSerializer.Deserialize<T>(await stringTask);
@@ -185,16 +222,20 @@ namespace GitHubExplorer {
 
     public class User : IUser {
         private IDictionary<string, JToken> _additionalData;
-        private string _repos_url; //"https://api.github.com/users/marczaku/repos"
+        private Dictionary<string, Repo> repoDictionary;
         private string _description;
         public string Name { get; }
-        public string Description { get; }
+        public string Description => _description;
         
-        public User(UserJson userJson) {
+        public User(UserJson userJson, List<RepoJson> repoJsonList) {
             this.Name = userJson.Name;
-            this._repos_url = userJson.ReposUrl;
             this._description = $"Name: {Name}, Location: {userJson.Location}, Company: {userJson.Company}";
             this._additionalData = userJson.AdditionalData;
+            
+            this.repoDictionary = new Dictionary<string, Repo>();
+            foreach (var repo in repoJsonList) {
+                repoDictionary.Add(repo.Name, new Repo(repo.Description, repo.Url));
+            }
         }
         
         public IRepository GetRepository(string repository) {
@@ -208,23 +249,49 @@ namespace GitHubExplorer {
                 Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
             }
         }
+
+        public void PrintRepos() {
+            foreach (var kvp in repoDictionary) {
+                Console.WriteLine($"{kvp.Key}, {kvp.Value.Description}");
+            }
+        }
+
+        private struct Repo {
+            public string Description;
+            public string Url;
+            public Repo(string description, string url) {
+                Description = description;
+                Url = url;
+            }
+        }
     }
     
     public class UserJson {
-        [Newtonsoft.Json.JsonPropertyAttribute("name")]
+        [JsonPropertyAttribute("name")]
         public string Name { get; set; }
-        [Newtonsoft.Json.JsonPropertyAttribute("location")]
+        [JsonPropertyAttribute("location")]
         public string Location { get; set; }
         //[JsonPropertyName("organizations_url")]
         //public Uri OrganizationsUrl { get; set; }
         [Newtonsoft.Json.JsonPropertyAttribute("repos_url")]
         public string ReposUrl { get; set; }
-        [Newtonsoft.Json.JsonPropertyAttribute("company")]
+        [JsonPropertyAttribute("company")]
         public string Company { get; set; }
         
         [JsonExtensionData]
         public IDictionary<string, JToken> AdditionalData { get; set; }
         //[JsonExtensionData]
         //public IDictionary<string, object> AdditionalData { get; set; }        
+    }
+
+    public class RepoJson {
+        [JsonPropertyAttribute("name")]
+        public string Name { get; set; }
+        
+        [JsonPropertyAttribute("url")]
+        public string Url { get; set; }
+        
+        [JsonPropertyAttribute("description")]
+        public string Description { get; set; }
     }
 }
