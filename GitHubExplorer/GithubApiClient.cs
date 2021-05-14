@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using GitHubExplorer.Data;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace GitHubExplorer {
     public class GithubApiClient {
         static readonly HttpClient client = new HttpClient();
-        private IGitHubAPI gitHubApi = null;
+        private IGitHubApi gitHubApi = null;
         private IUser user = null;
 
         public GithubApiClient() {
@@ -83,7 +83,7 @@ namespace GitHubExplorer {
                             user.GetRepository(words[1]);
                         break;
                     case "goto":
-                        UnmanagedData page = GithubApi.GetUnmanaged(words[1]);
+                        IUnmanagedData page = GithubApi.GetUnmanaged(words[1]);
                         page?.Print();
                         break;
                     default:
@@ -115,7 +115,6 @@ namespace GitHubExplorer {
         
         private static async Task<T> ProcessResponse<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
-            //return JsonSerializer.Deserialize<T>(await stringTask);
             return JsonConvert.DeserializeObject<T>(await stringTask);
         }
 
@@ -129,7 +128,7 @@ namespace GitHubExplorer {
         }
     }
 
-    public class GithubApi : IGitHubAPI {
+    public class GithubApi : IGitHubApi {
         private static HttpClient client;
         public GithubApi(HttpClient c) {
             client = c;
@@ -156,7 +155,7 @@ namespace GitHubExplorer {
             }
         }
         
-        public static UnmanagedData GetUnmanaged(string url) {
+        public static IUnmanagedData GetUnmanaged(string url) {
             try {
                 string result = client.GetStringAsync(url).GetAwaiter().GetResult();
                 if (result.StartsWith('[')) {
@@ -226,97 +225,5 @@ namespace GitHubExplorer {
         private static T ProcessResponse<T>(string stringToDeserialize) {
             return JsonConvert.DeserializeObject<T>(stringToDeserialize);
         }
-    }
-
-    public class User : IUser {
-        [JsonPropertyAttribute("login")] public string Login { get; set; }
-        [JsonPropertyAttribute("name")] public string Name { get; set; }
-        [JsonPropertyAttribute("location")] public string Location { get; set; }
-        [JsonPropertyAttribute("company")] public string Company { get; set; }
-        [JsonExtensionData] private IDictionary<string, JToken> AdditionalData { get; set; }
-        
-        public string Description => $"({Login}) Name: {Name}, Location: {Location}, Company: {Company}";
-
-        public IRepository GetRepository(string repository) {
-            return GithubApi.GetRepository(Login, repository);
-        }
-
-        public IEnumerable<IRepository> Repositories() {
-            var list = GithubApi.GetRepositories(Login);
-            if (list == null)
-                yield return null;
-            
-            foreach (var repo in list) {
-                yield return repo;
-            }
-        }
-
-        public IEnumerable<Organization> Organizations() {
-            var list = GithubApi.GetOrganizations(Login);
-            if (list == null)
-                yield return null;
-            
-            foreach (var repo in list) {
-                yield return repo;
-            }
-        }
-        
-        public void PrintAdditionalData() {
-            foreach (var kvp in AdditionalData) {
-                string info = kvp.Value == null ? "" : kvp.Value.ToString();
-                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type}) {info}" );
-            }
-        }
-    }
-
-    public class Repository : IRepository {
-        [JsonPropertyAttribute("name")]
-        public string Name { get; set; }
-        
-        [JsonPropertyAttribute("url")]
-        public string Url { get; set; }
-        
-        [JsonPropertyAttribute("description")]
-        public string Description { get; set; }
-        public override string ToString() {
-            return $"{Name}, {Description}";
-        }
-    }
-
-    public class Organization {
-        [JsonPropertyAttribute("login")]public string Login { get; set; }
-        [JsonPropertyAttribute("public_members_url")] public string PublicMembersUrl { get; set; }
-        [JsonPropertyAttribute("description")] public string Description { get; set; }
-        [JsonExtensionData] private IDictionary<string, JToken> _additionalData;
-        public override string ToString() {
-            return $"({Login}) {Description}";
-        }
-    }
-
-    public class DynamicData : UnmanagedData {
-        [JsonExtensionData] private IDictionary<string, JToken> AdditionalData;
-        public void Print() {
-            foreach (var kvp in AdditionalData) {
-                string info = kvp.Value == null ? "" : kvp.Value.ToString();
-                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type}) {info}" );
-            }
-        }
-    }
-
-    public class DynamicListData : UnmanagedData {
-        private List<DynamicData> dynamicDatas;
-        public DynamicListData(List<DynamicData> list) {
-            this.dynamicDatas = list;
-        }
-        public void Print() {
-            foreach (var dict in dynamicDatas) {
-                dict.Print();
-                Console.WriteLine();
-            }
-        }
-    }
-    
-    public interface UnmanagedData {
-        public void Print();
     }
 }

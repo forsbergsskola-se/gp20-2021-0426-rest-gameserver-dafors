@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace GitHubExplorer {
+namespace GitHubExplorer.Data {
     public interface IUser {
         IRepository GetRepository(string repository);
         string Name { get; }
