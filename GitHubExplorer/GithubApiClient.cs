@@ -20,13 +20,14 @@ namespace GitHubExplorer {
         }
 
         public void Run() {
-            ShowInstructions();
+            Console.WriteLine("GithubAPI started. Type help for list of commands");
             while (true) {
                 string input = PromptUserInstructions();
                 if (QuitRequested(input))
                     break;
                 ProcessUserInput(input);
             }
+            client.Dispose();
         }
         
         private void ProcessUserInput(string input) {
@@ -34,6 +35,12 @@ namespace GitHubExplorer {
             
             if (words.Length == 1) {
                 switch (words[0]) {
+                    case "unmanaged":
+                        if (user != null)
+                            user.PrintAdditionalData();
+                        else 
+                            Console.WriteLine("no user selected");
+                        break;
                     case "orgs":
                         if (user != null)
                             foreach (var org in user.Organizations()) {
@@ -75,8 +82,10 @@ namespace GitHubExplorer {
                         else
                             user.GetRepository(words[1]);
                         break;
-                    // case "goto": //TODO
-                    //     break;
+                    case "goto":
+                        UnmanagedData page = GithubApi.GetUnmanaged(words[1]);
+                        page?.Print();
+                        break;
                     default:
                         Console.WriteLine("undefined command");
                         break;
@@ -93,8 +102,8 @@ namespace GitHubExplorer {
         }
 
         private void ShowInstructions() {
-            // Console.WriteLine($"'goto <url>' to navigate to unmanaged pages"); //TODO
-            // Console.WriteLine($"'showunmanaged' to show unmanaged options for the current user"); //TODO
+            Console.WriteLine($"'goto <url>' to navigate freely");
+            Console.WriteLine($"'unmanaged' to show unmanaged options for the current user");
             Console.WriteLine($"'user <user>' to navigate to new user");
             Console.WriteLine($"'description' shows description");
             Console.WriteLine($"'repos' shows current users repos");
@@ -127,10 +136,10 @@ namespace GitHubExplorer {
         }
         public IUser GetUser(string userName) {
             try {
-                return ProcessResponse<User>(UserUrl(userName)).GetAwaiter().GetResult();
+                return ProcessResponseAsync<User>(UserUrl(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
-                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Error message: {e.Message}");
                 Console.WriteLine($"Returning null for input {userName}");
                 return null;
             }
@@ -138,11 +147,31 @@ namespace GitHubExplorer {
 
         public static List<Repository> GetRepositories(string userName) {
             try {
-                return ProcessResponse<List<Repository>>(ReposUrl(userName)).GetAwaiter().GetResult();
+                return ProcessResponseAsync<List<Repository>>(ReposUrl(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
-                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Error message: {e.Message}");
                 Console.WriteLine($"Returning null for input {userName}");
+                return null;
+            }
+        }
+        
+        public static UnmanagedData GetUnmanaged(string url) {
+            try {
+                string result = client.GetStringAsync(url).GetAwaiter().GetResult();
+                if (result.StartsWith('[')) {
+                    var list = ProcessResponse<List<DynamicData>>(result);
+                    return new DynamicListData(list);
+                }
+                return ProcessResponse<DynamicData>(result);
+            }
+            catch (JsonSerializationException e) {
+                throw e;
+            }
+            catch (Exception e) {
+                Console.WriteLine($"Error message: {e.Message}");
+                Console.WriteLine(e.GetType());
+                Console.WriteLine($"Returning null for input {url}");
                 return null;
             }
         }
@@ -153,10 +182,10 @@ namespace GitHubExplorer {
 
         public static Repository GetRepository(string url) {
             try {
-                return ProcessResponse<Repository>(url).GetAwaiter().GetResult();
+                return ProcessResponseAsync<Repository>(url).GetAwaiter().GetResult();
             }
             catch (Exception e) {
-                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Error message: {e.Message}");
                 Console.WriteLine($"Returning null for input {url}");
                 return null;
             }
@@ -164,10 +193,10 @@ namespace GitHubExplorer {
         
         public static IEnumerable<Organization> GetOrganizations(string userName) {
             try {
-                return ProcessResponse<List<Organization>>(OrganizationsUrl(userName)).GetAwaiter().GetResult();
+                return ProcessResponseAsync<List<Organization>>(OrganizationsUrl(userName)).GetAwaiter().GetResult();
             }
             catch (Exception e) {
-                Console.WriteLine("Error message: " + e.Message);
+                Console.WriteLine($"Error message: {e.Message}");
                 Console.WriteLine($"Returning null for input {userName}");
                 return null;
             }
@@ -189,9 +218,13 @@ namespace GitHubExplorer {
             return $"https://api.github.com/users/{userName}/orgs";
         }
         
-        private static async Task<T> ProcessResponse<T>(string uri) {
+        private static async Task<T> ProcessResponseAsync<T>(string uri) {
             Task<string> stringTask = client.GetStringAsync(uri);
             return JsonConvert.DeserializeObject<T>(await stringTask);
+        }
+        
+        private static T ProcessResponse<T>(string stringToDeserialize) {
+            return JsonConvert.DeserializeObject<T>(stringToDeserialize);
         }
     }
 
@@ -200,8 +233,8 @@ namespace GitHubExplorer {
         [JsonPropertyAttribute("name")] public string Name { get; set; }
         [JsonPropertyAttribute("location")] public string Location { get; set; }
         [JsonPropertyAttribute("company")] public string Company { get; set; }
-        [JsonExtensionData] public IDictionary<string, JToken> AdditionalData { get; set; }
-        //[JsonExtensionData] public IDictionary<string, object> AdditionalData { get; set; }
+        [JsonExtensionData] private IDictionary<string, JToken> AdditionalData { get; set; }
+        
         public string Description => $"({Login}) Name: {Name}, Location: {Location}, Company: {Company}";
 
         public IRepository GetRepository(string repository) {
@@ -228,10 +261,10 @@ namespace GitHubExplorer {
             }
         }
         
-        // currently not in use
         public void PrintAdditionalData() {
             foreach (var kvp in AdditionalData) {
-                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type})");
+                string info = kvp.Value == null ? "" : kvp.Value.ToString();
+                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type}) {info}" );
             }
         }
     }
@@ -260,17 +293,30 @@ namespace GitHubExplorer {
         }
     }
 
-    public class UnmanagedClass {
-        [JsonExtensionData] private IDictionary<string, JToken> _additionalData;
+    public class DynamicData : UnmanagedData {
+        [JsonExtensionData] private IDictionary<string, JToken> AdditionalData;
+        public void Print() {
+            foreach (var kvp in AdditionalData) {
+                string info = kvp.Value == null ? "" : kvp.Value.ToString();
+                Console.WriteLine($"{kvp.Key} ({kvp.Value.Type}) {info}" );
+            }
+        }
+    }
+
+    public class DynamicListData : UnmanagedData {
+        private List<DynamicData> dynamicDatas;
+        public DynamicListData(List<DynamicData> list) {
+            this.dynamicDatas = list;
+        }
+        public void Print() {
+            foreach (var dict in dynamicDatas) {
+                dict.Print();
+                Console.WriteLine();
+            }
+        }
+    }
+    
+    public interface UnmanagedData {
+        public void Print();
     }
 }
-// Some legacy code kept for reference
-// PropertyInfo[] propInfos = mainPageUris.GetType().GetProperties();
-// int index = 0;
-// foreach (PropertyInfo prop in propInfos) {
-//     Console.WriteLine($"{index} --> {prop.Name} ({prop.PropertyType.Name}): {prop.GetValue(mainPageUris)}");
-//     //Uri uri = (Uri) prop.GetValue(mainPageUris);
-//     index++;
-// }
-
-//Console.WriteLine("length: " + propInfos.Length);

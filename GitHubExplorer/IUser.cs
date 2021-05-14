@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace GitHubExplorer {
     public interface IUser {
@@ -8,5 +7,6 @@ namespace GitHubExplorer {
         string Description { get; }
         public IEnumerable<IRepository> Repositories();
         public IEnumerable<Organization> Organizations();
+        public void PrintAdditionalData();
     }
 }
