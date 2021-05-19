@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace LameScooter {
@@ -16,11 +17,10 @@ namespace LameScooter {
 
         public async Task InitAsync(string uri) {
             Console.WriteLine($"Loading from: {uri}");
-            
             List<LameScooterStationList> list = null;
             try	
             {
-                list = await client.GetFromJsonAsync<List<LameScooterStationList>>(uri);
+                list = (await client.GetFromJsonAsync<ButWhyyy>(uri))?.Stations;
             }
             catch(HttpRequestException e)
             {

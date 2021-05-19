@@ -47,6 +47,5 @@ namespace LameScooter
                 Console.WriteLine("Stack Trace:\n   {0}\n", e.StackTrace);
             }
         }
-        
     }
 }
