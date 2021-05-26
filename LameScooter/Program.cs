@@ -1,4 +1,6 @@
 ﻿using System;
+using LameScooter.RentalServices;
+
 namespace LameScooter
 {
     class Program {
@@ -18,11 +20,11 @@ namespace LameScooter
                     break;
                 case "offline":
                     rental = new OfflineLameScooterRental();
-                    fileUri = "scooters.json";
+                    fileUri = "Data/scooters.json";
                     break;
                 case "deprecated":
                     rental = new DeprecatedLameScooterRental();
-                    fileUri = "scooters.txt";
+                    fileUri = "Data/scooters.txt";
                     break;
                 default:
                     Console.WriteLine($"Database {rentalDatabase} not found, using 'offline' to lookup query");

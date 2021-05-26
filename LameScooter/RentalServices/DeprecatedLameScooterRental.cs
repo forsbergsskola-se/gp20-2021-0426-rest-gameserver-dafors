@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace LameScooter {
+namespace LameScooter.RentalServices {
     public class DeprecatedLameScooterRental : IRentalAsync  {
         private Dictionary<string, LameScooterStationList> stationLookup = null;
 

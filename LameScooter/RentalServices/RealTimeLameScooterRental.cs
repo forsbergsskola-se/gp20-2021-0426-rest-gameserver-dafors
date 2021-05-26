@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-namespace LameScooter {
+namespace LameScooter.RentalServices {
     public class RealTimeLameScooterRental : IRentalAsync  {
         private Dictionary<string, LameScooterStationList> stationLookup = null;
         static readonly HttpClient client = new HttpClient();
@@ -19,7 +19,7 @@ namespace LameScooter {
             List<LameScooterStationList> list = null;
             try	
             {
-                list = (await client.GetFromJsonAsync<ButWhyyy>(uri))?.Stations;
+                list = (await client.GetFromJsonAsync<LameScooterContainer>(uri))?.Stations;
             }
             catch(HttpRequestException e)
             {
