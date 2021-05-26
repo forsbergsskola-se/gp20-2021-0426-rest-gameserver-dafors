@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LameScooter {
+namespace LameScooter.CustomExceptions {
     public class NotFoundException : Exception {
         public NotFoundException() {}
 

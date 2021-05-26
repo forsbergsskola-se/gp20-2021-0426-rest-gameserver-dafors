@@ -1,11 +1,11 @@
 ﻿using System;
+using LameScooter.CustomExceptions;
 using LameScooter.RentalServices;
 
 namespace LameScooter
 {
     class Program {
-        
-        // static async Task Main(string[] args)
+
         static void Main(string[] args)
         {
             string stationToQuery = args[0];

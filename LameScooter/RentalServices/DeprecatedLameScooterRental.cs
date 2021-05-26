@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using LameScooter.CustomExceptions;
+using LameScooter.JSonTemplates;
 
 namespace LameScooter.RentalServices {
     public class DeprecatedLameScooterRental : IRentalAsync  {

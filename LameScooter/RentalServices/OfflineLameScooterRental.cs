@@ -4,9 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using LameScooter.RentalServices;
+using LameScooter.CustomExceptions;
+using LameScooter.JSonTemplates;
 
-namespace LameScooter {
+namespace LameScooter.RentalServices {
     public class OfflineLameScooterRental : IRentalAsync  {
         private Dictionary<string, LameScooterStationList> stationLookup = null;
         public void Init(string uri) {
