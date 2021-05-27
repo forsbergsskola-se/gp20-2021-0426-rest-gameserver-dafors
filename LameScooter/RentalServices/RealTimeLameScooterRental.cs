@@ -9,7 +9,7 @@ using LameScooter.JSonTemplates;
 
 namespace LameScooter.RentalServices {
     public class RealTimeLameScooterRental : IRentalAsync  {
-        private Dictionary<string, LameScooterStationList> stationLookup = null;
+        private Dictionary<string, LameScooterStation> stationLookup = null;
         static readonly HttpClient client = new HttpClient();
 
         public void Init(string uri) {
@@ -18,7 +18,7 @@ namespace LameScooter.RentalServices {
 
         public async Task InitAsync(string uri) {
             Console.WriteLine($"Loading from: {uri}");
-            List<LameScooterStationList> list = null;
+            List<LameScooterStation> list = null;
             try	
             {
                 list = (await client.GetFromJsonAsync<LameScooterContainer>(uri))?.Stations;
@@ -32,7 +32,7 @@ namespace LameScooter.RentalServices {
             if (list == null)
                 return;
             
-            stationLookup = new Dictionary<string, LameScooterStationList>();
+            stationLookup = new Dictionary<string, LameScooterStation>();
             foreach (var station in list) {
                 stationLookup[station.name] = station;
             }
@@ -42,7 +42,7 @@ namespace LameScooter.RentalServices {
             if (ContainsDigit(nameOfStation))
                 throw new System.ArgumentException($"{nameOfStation} contains numerals");
 
-            if (stationLookup.TryGetValue(nameOfStation, out LameScooterStationList val)) {
+            if (stationLookup.TryGetValue(nameOfStation, out LameScooterStation val)) {
                 return val.bikesAvailable;    
             }
             throw new NotFoundException($"{nameOfStation} not found");

@@ -2,6 +2,6 @@
 
 namespace LameScooter.JSonTemplates {
     public class LameScooterContainer {
-        public List<LameScooterStationList> Stations { get; set; }
+        public List<LameScooterStation> Stations { get; set; }
     }
 }

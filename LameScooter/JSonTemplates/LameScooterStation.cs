@@ -1,6 +1,10 @@
-﻿namespace LameScooter.JSonTemplates {
-    public class LameScooterStationList {
-        public LameScooterStationList(string name, int bikesAvailable) {
+﻿using MongoDB.Bson.Serialization.Attributes;
+
+namespace LameScooter.JSonTemplates {
+    
+    [BsonIgnoreExtraElements]
+    public class LameScooterStation {
+        public LameScooterStation(string name, int bikesAvailable) {
             this.name = name;
             this.bikesAvailable = bikesAvailable;
         }

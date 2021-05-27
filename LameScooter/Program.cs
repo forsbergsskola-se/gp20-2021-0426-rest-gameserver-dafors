@@ -12,7 +12,7 @@ namespace LameScooter
             string rentalDatabase = args[1];
 
             string fileUri;
-            IRentalAsync rental;
+            IRental rental;
             switch (rentalDatabase) {
                 case "realtime":
                     rental = new RealTimeLameScooterRental();
@@ -26,6 +26,10 @@ namespace LameScooter
                     rental = new DeprecatedLameScooterRental();
                     fileUri = "Data/scooters.txt";
                     break;
+                case "mongodb":
+                    rental = new MongoDBLameScooterRental();
+                    fileUri = "";
+                    break;
                 default:
                     Console.WriteLine($"Database {rentalDatabase} not found, using 'offline' to lookup query");
                     rental = new OfflineLameScooterRental();
@@ -33,7 +37,7 @@ namespace LameScooter
                     break;
             }
             
-            rental.InitAsync(fileUri).GetAwaiter().GetResult();
+            rental.Init(fileUri);
 
             try {
                 Console.WriteLine($"station {stationToQuery} has {rental.GetScooterCountInStation(stationToQuery)}");

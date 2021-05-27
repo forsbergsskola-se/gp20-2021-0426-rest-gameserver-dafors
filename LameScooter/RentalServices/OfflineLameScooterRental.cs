@@ -9,7 +9,7 @@ using LameScooter.JSonTemplates;
 
 namespace LameScooter.RentalServices {
     public class OfflineLameScooterRental : IRentalAsync  {
-        private Dictionary<string, LameScooterStationList> stationLookup = null;
+        private Dictionary<string, LameScooterStation> stationLookup = null;
         public void Init(string uri) {
             InitAsync(uri).GetAwaiter().GetResult();
         }
@@ -28,9 +28,9 @@ namespace LameScooter.RentalServices {
             };
             
             await using FileStream openStream = File.OpenRead(uri);
-            var list = await JsonSerializer.DeserializeAsync<List<LameScooterStationList>>(openStream, options);
+            var list = await JsonSerializer.DeserializeAsync<List<LameScooterStation>>(openStream, options);
 
-            stationLookup = new Dictionary<string, LameScooterStationList>();
+            stationLookup = new Dictionary<string, LameScooterStation>();
             foreach (var station in list) {
                 stationLookup[station.name] = station;
             }
@@ -40,7 +40,7 @@ namespace LameScooter.RentalServices {
             if (ContainsDigit(nameOfStation))
                 throw new System.ArgumentException($"{nameOfStation} contains numerals");
 
-            if (stationLookup.TryGetValue(nameOfStation, out LameScooterStationList val)) {
+            if (stationLookup.TryGetValue(nameOfStation, out LameScooterStation val)) {
                 return val.bikesAvailable;    
             }
             throw new NotFoundException($"{nameOfStation} not found");
