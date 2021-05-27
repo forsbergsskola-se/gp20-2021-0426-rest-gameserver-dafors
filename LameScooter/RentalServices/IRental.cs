@@ -3,10 +3,10 @@
 namespace LameScooter.RentalServices {
     public interface IRental {
         public int GetScooterCountInStation(string nameOfStation);
-        public void Init(string uri);
+        public void Init();
     }
 
     public interface IRentalAsync : IRental {
-        Task InitAsync(string uri);
+        Task InitAsync();
     }
 }

@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
 using LameScooter.CustomExceptions;
 using LameScooter.JSonTemplates;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +11,7 @@ namespace LameScooter.RentalServices {
         private IMongoDatabase db;
         private IMongoCollection<LameScooterStation> dbCollection;
 
-        public void Init(string uri ="") {
+        public void Init() {
             IConfigurationRoot config = new ConfigurationBuilder().AddUserSecrets<Program>().Build();
             IConfigurationProvider secretProvider = config.Providers.First();
             if (!secretProvider.TryGet("AtlasPwd", out string pwd)) {

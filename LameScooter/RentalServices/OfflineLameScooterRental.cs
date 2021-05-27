@@ -10,11 +10,12 @@ using LameScooter.JSonTemplates;
 namespace LameScooter.RentalServices {
     public class OfflineLameScooterRental : IRentalAsync  {
         private Dictionary<string, LameScooterStation> stationLookup = null;
-        public void Init(string uri) {
-            InitAsync(uri).GetAwaiter().GetResult();
+        private const string uri = "Data/scooters.json";
+        public void Init() {
+            InitAsync().GetAwaiter().GetResult();
         }
 
-        public async Task InitAsync(string uri) {
+        public async Task InitAsync() {
             
             Console.WriteLine($"Loading from: {uri}");
             if (!File.Exists(uri)){

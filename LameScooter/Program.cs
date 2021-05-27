@@ -5,39 +5,31 @@ using LameScooter.RentalServices;
 namespace LameScooter
 {
     class Program {
-
         static void Main(string[] args)
         {
             string stationToQuery = args[0];
             string rentalDatabase = args[1];
 
-            string fileUri;
             IRental rental;
             switch (rentalDatabase) {
                 case "realtime":
                     rental = new RealTimeLameScooterRental();
-                    fileUri = "https://raw.githubusercontent.com/marczaku/GP20-2021-0426-Rest-Gameserver/main/assignments/scooters.json";
                     break;
                 case "offline":
                     rental = new OfflineLameScooterRental();
-                    fileUri = "Data/scooters.json";
                     break;
                 case "deprecated":
                     rental = new DeprecatedLameScooterRental();
-                    fileUri = "Data/scooters.txt";
                     break;
                 case "mongodb":
                     rental = new MongoDBLameScooterRental();
-                    fileUri = "";
                     break;
                 default:
                     Console.WriteLine($"Database {rentalDatabase} not found, using 'offline' to lookup query");
                     rental = new OfflineLameScooterRental();
-                    fileUri = "scooters.json";
                     break;
             }
-            
-            rental.Init(fileUri);
+            rental.Init();
 
             try {
                 Console.WriteLine($"station {stationToQuery} has {rental.GetScooterCountInStation(stationToQuery)}");

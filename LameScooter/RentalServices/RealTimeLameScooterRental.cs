@@ -11,12 +11,12 @@ namespace LameScooter.RentalServices {
     public class RealTimeLameScooterRental : IRentalAsync  {
         private Dictionary<string, LameScooterStation> stationLookup = null;
         static readonly HttpClient client = new HttpClient();
-
-        public void Init(string uri) {
-            InitAsync(uri).GetAwaiter().GetResult();
+        private const string uri = "https://raw.githubusercontent.com/marczaku/GP20-2021-0426-Rest-Gameserver/main/assignments/scooters.json";
+        public void Init() {
+            InitAsync().GetAwaiter().GetResult();
         }
 
-        public async Task InitAsync(string uri) {
+        public async Task InitAsync() {
             Console.WriteLine($"Loading from: {uri}");
             List<LameScooterStation> list = null;
             try	

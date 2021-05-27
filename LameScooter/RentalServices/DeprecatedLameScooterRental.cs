@@ -8,8 +8,8 @@ using LameScooter.JSonTemplates;
 namespace LameScooter.RentalServices {
     public class DeprecatedLameScooterRental : IRental  {
         private Dictionary<string, LameScooterStation> stationLookup = null;
-
-        public void Init(string uri) {
+        private const string uri = "Data/scooters.txt";
+        public void Init() {
             stationLookup = new Dictionary<string, LameScooterStation>();
             Console.WriteLine($"Loading from: {uri}");
             if (!File.Exists(uri)){
